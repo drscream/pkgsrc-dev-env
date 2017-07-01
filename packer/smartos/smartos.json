@@ -1,0 +1,175 @@
+{
+	"variables": {
+		"cpus": "4",
+		"memory": "8192",
+		"image_uuid": "954d7bc0-0559-11e5-845f-8b0d061598e9"
+	},
+	"builders": [
+		{
+			"type": "vmware-iso",
+
+			"iso_url":  "http://us-east.manta.joyent.com/Joyent_Dev/public/SmartOS/20170511T001921Z/smartos-20170511T001921Z.iso",
+			"iso_checksum": "cb41b8c139055bd2d086e4adb89dca15",
+			"iso_checksum_type": "md5",
+
+			"disk_size": 1024,
+			"disk_additional_size": [30720],
+
+			"guest_os_type": "solaris10-64",
+			"shutdown_command": "poweroff",
+			"headless": false,
+
+			"vm_name": "SmartOS-GZ",
+			"vmdk_name": "SmartOS-GZ",
+			"version": "12",
+			"vmx_data": {
+				"mks.enableGLBasicRenderer": "FALSE",
+				"memsize": "{{ user `memory` }}",
+				"numvcpus": "{{ user `cpus` }}",
+				"vhv.enable": "TRUE",
+				"vpmc.enable": "TRUE"
+			},
+			"vmx_remove_ethernet_interfaces": true,
+
+			"communicator": "ssh",
+			"ssh_username": "root",
+			"ssh_password": "vagrant",
+
+			"boot_wait": "45s",
+			"boot_command": [
+				"<enter><wait5>",
+				"<enter><wait5>",
+				"dhcp<enter><wait5>",
+				"<enter><wait10>",
+				"<enter><wait10>",
+				"<enter><wait10>",
+				"vagrant<enter><wait5>",
+				"<enter><wait10><wait10>",
+				"manual<enter><wait5>",
+				"zpool create zones $(disklist -n | awk '{print $2; exit}')<enter><wait5>",
+				"exit<enter><wait5>",
+				"vagrant<enter><wait>",
+				"vagrant<enter><wait>",
+				"vagrant-smartos<enter><wait5>",
+				"<enter>",
+				"<wait10><wait10><enter>"
+			]
+		},
+		{
+			"type": "virtualbox-iso",
+
+			"iso_url":  "http://us-east.manta.joyent.com/Joyent_Dev/public/SmartOS/20170622T212149Z/smartos-20170622T212149Z.iso",
+			"iso_checksum": "c4085794bf6a1f34db235df8cf51f1ef",
+			"iso_checksum_type": "md5",
+
+			"hard_drive_interface": "sata",
+			"sata_port_count": 2,
+			"disk_size": 1024,
+
+			"guest_os_type": "OpenSolaris_64",
+			"guest_additions_mode": "disable",
+			"shutdown_command": "poweroff",
+			"headless": false,
+
+			"vm_name": "SmartOS-GZ",
+			"virtualbox_version_file": ".vbox_version",
+			"vboxmanage": [
+				[ "modifyvm", "{{.Name}}", "--memory", "{{user `memory`}}" ],
+				[ "modifyvm", "{{.Name}}", "--cpus", "{{user `cpus`}}"],
+				[ "modifyvm", "{{.Name}}", "--rtcuseutc", "on" ],
+				[ "modifyvm", "{{.Name}}", "--natdnsproxy1", "on" ],
+				[ "createhd", "--format", "VHD", "--filename", "disk2.vdh", "--variant", "STREAM", "--size", "30720" ],
+				[ "storageattach", "{{.Name}}", "--storagectl", "SATA Controller", "--port", "1", "--type", "hdd", "--medium", "disk2.vdh" ]
+			],
+
+			"communicator": "ssh",
+			"ssh_username": "root",
+			"ssh_password": "vagrant",
+
+			"boot_wait": "45s",
+			"boot_command": [
+				"<enter><wait5>",
+				"<enter><wait5>",
+				"dhcp<enter><wait5>",
+				"<enter><wait10>",
+				"<enter><wait10>",
+				"<enter><wait10>",
+				"vagrant<enter><wait5>",
+				"<enter><wait10><wait10>",
+				"manual<enter><wait5>",
+				"zpool create zones $(disklist -n | awk '{print $2; exit}')<enter><wait5>",
+				"exit<enter><wait5>",
+				"vagrant<enter><wait>",
+				"vagrant<enter><wait>",
+				"vagrant-smartos<enter><wait5>",
+				"<enter>",
+				"<wait10><wait10><enter>"
+			]
+		} 
+	],
+	"provisioners": [
+		{
+			"type": "shell",
+			"start_retry_timeout": "5m",
+			"script": "scripts/install-to-root-volume.sh"
+		},
+		{
+			"type": "shell",
+			"start_retry_timeout": "5m",
+			"script": "scripts/import-latest-base.sh"
+		},
+		{
+			"type": "file",
+			"source": "files/configure-vagrant-gz.sh",
+			"destination": "/tmp/configure-vagrant-gz.sh"
+		},
+		{
+			"type": "file",
+			"source": "files/vagrant.xml",
+			"destination": "/tmp/vagrant.xml"
+		},
+		{
+			"type": "file",
+			"source": "files/authorized_keys",
+			"destination": "/tmp/authorized_keys"
+		},
+		{
+			"type": "shell",
+			"inline": [
+				"mkdir -p /usbkey/config.inc",
+				"mv /tmp/authorized_keys /usbkey/config.inc/authorized_keys",
+				"echo 'root_authorized_keys_file=authorized_keys' >> /usbkey/config",
+
+				"mkdir -p /opt/custom/{bin,smf}",
+				"mv /tmp/configure-vagrant-gz.sh /opt/custom/bin",
+				"chmod +x /opt/custom/bin/configure-vagrant-gz.sh",
+
+				"mv /tmp/vagrant.xml /opt/custom/smf"
+			]
+		},
+		{
+			"type": "shell",
+			"start_retry_timeout": "5m",
+			"script": "scripts/install-pkgsrc.sh"
+		},
+		{
+			"type": "shell",
+			"start_retry_timeout": "5m",
+			"script": "scripts/create-vagrant-user.sh"
+		},
+		{
+			"type": "shell",
+			"start_retry_timeout": "5m",
+			"script": "scripts/global-zone-configure.sh"
+		}
+	],
+	"post-processors": [
+		[
+			{
+				"type": "vagrant",
+				"vagrantfile_template": "./vagrantfile/smartos",
+				"output": "SmartOS-GZ_{{.Provider}}.box"
+			}
+		]
+	]
+}

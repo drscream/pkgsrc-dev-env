@@ -1,0 +1,53 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$pkgsrc = File.expand_path("../pkgsrc", __FILE__)
+
+Vagrant.configure("2") do |config|
+  config.vm.define "netbsd7" do |netbsd7|
+    netbsd7.vm.box = "drscream/netbsd-pkgbuild"
+    #netbsd7.vm.box = "~/Development/packer-nbsd-boxes/builds/netbsd-7.0.1-amd64-virtualbox.box"
+    netbsd7.vm.box_check_update = false
+    netbsd7.vm.network :private_network, ip: "10.11.12.13"
+
+    netbsd7.vm.synced_folder ".", "/vagrant", nfs: true
+    netbsd7.vm.synced_folder $pkgsrc, "/content/pkgsrc", :nfs => true
+
+    netbsd7.vm.provider "virtualbox" do |vb|
+        vb.memory = "1024"
+    end
+
+    netbsd7.vm.provision "file", source: "../home/mk.conf.netbsd7", destination: "/tmp/mk.conf"
+
+    netbsd7.vm.provision "shell", inline: <<-SHELL
+        sudo mv /tmp/mk.conf /etc/mk.conf;
+        mkdir -p /content/distfiles /content/packages /content/work;
+    SHELL
+  end
+
+  config.vm.define "smartos1701" do |smartos1701|
+    smartos1701.vm.box = "drscream/smartos-pkgbuild"
+    #smartos1701.vm.box = "~/Development/packer-smartos-gz/SmartOS-GZ_virtualbox.box"
+
+    smartos1701.vm.synced_folder ".", "/vagrant", disabled: true
+    smartos1701.vm.communicator = "smartos"
+
+    smartos1701.ssh.insert_key = false
+
+    smartos1701.global_zone.platform_image = "latest"
+
+    smartos1701.vm.network "private_network", ip: "33.33.33.10"
+
+    smartos1701.vm.synced_folder $pkgsrc, "/content/pkgsrc", :nfs => true
+
+    smartos1701.zone.name = "pkgbuild"
+    smartos1701.zone.brand = "joyent"
+    smartos1701.zone.image = "6f52b344-2047-11e7-80a6-433c0fa4e424"
+    smartos1701.zone.memory = 1024
+    smartos1701.zone.disk_size = 10
+
+    smartos1701.vm.provider "virtualbox" do |v|
+      v.memory = 2048
+    end
+  end
+end
