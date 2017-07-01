@@ -19,4 +19,4 @@ alias ll="ls -la"
 export PS1="{\!} \[\e[1;37m\]\w\[\033[m\]\[\e[32;1m\]$\[\033[m\] "
 
 # Switch mode
-bash --rcfile ~/pkgsrc-dev-env/home/.bashrc
+bash --rcfile home/.bashrc
