@@ -1,0 +1,23 @@
+# My mk.conf
+
+.ifdef BSD_PKG_MK	# begin pkgsrc settings
+
+UNPRIVILEGED=		yes
+PKGINFODIR=		info
+PKGMANDIR=		man
+
+DISTDIR=		/content/distfiles
+PACKAGES=		/content/packages
+WRKOBJDIR=		/content/work
+
+FAILOVER_FETCH=		yes
+FETCH_USING=		curl
+
+ALLOW_VULNERABLE_PACKAGES=	yes
+SKIP_LICENSE_CHECK=		yes
+# Always enable PKG_DEVELOPER rather than distributing broken packages.
+PKG_DEVELOPER=		yes
+
+MAKE_JOBS=		4
+
+.endif			# end pkgsrc settings
